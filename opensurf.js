@@ -7,7 +7,7 @@ var opensurf;
         }
         IPoint.prototype.SetDescriptorLength = function (size) {
             this.descriptorLength = size;
-            this.descriptor = new Float32Array(size);
+            this.descriptor = new Float64Array(size);
         };
         return IPoint;
     })();
@@ -198,9 +198,9 @@ var opensurf;
         };
         SurfDescriptor.prototype.GetOrientation = function (ip) {
             var Responses = 109;
-            var resX = new Float32Array(Responses);
-            var resY = new Float32Array(Responses);
-            var Ang = new Float32Array(Responses);
+            var resX = new Float64Array(Responses);
+            var resY = new Float64Array(Responses);
+            var Ang = new Float64Array(Responses);
             var idx = 0;
             var id = [
                 6, 
@@ -411,8 +411,8 @@ var opensurf;
             this.height = height;
             this.step = step;
             this.filter = filter;
-            this.responses = new Float32Array(width * height);
-            this.laplacian = new Float32Array(width * height);
+            this.responses = new Float64Array(width * height);
+            this.laplacian = new Float64Array(width * height);
         }
         ResponseLayer.prototype.getLaplacian = function (row, column, src) {
             if(src !== undefined) {
@@ -439,11 +439,11 @@ var opensurf;
             this.init_sample = init_sample;
             this.img = img;
         }
-        FastHessian.getIpoints = function getIpoints(thresh, octaves, init_sample, img, observer) {
+        FastHessian.getIpoints = function getIpoints(thresh, octaves, init_sample, img, observer, logger) {
             var fh = new FastHessian(thresh, octaves, init_sample, img);
-            return fh.getIpoints(observer);
+            return fh.getIpoints(observer, logger);
         }
-        FastHessian.prototype.getIpoints = function (observer) {
+        FastHessian.prototype.getIpoints = function (observer, logger) {
             var filter_map = [
                 [
                     0, 
@@ -490,6 +490,12 @@ var opensurf;
                     for(var r = 0; r < t.height; ++r) {
                         for(var c = 0; c < t.width; ++c) {
                             if(this.isExtremum(r, c, t, m, b)) {
+                                if(logger) {
+                                    logger(this.ipts.length + ": r=" + r + ", c=" + c);
+                                }
+                                if(this.ipts.length === 417) {
+                                    var hoge = 0;
+                                }
                                 this.interpolateExtremum(r, c, t, m, b, observer);
                             }
                         }
@@ -580,9 +586,9 @@ var opensurf;
                 return -e;
             }).multiply(D);
             var O = [
-                Of.e(0, 0), 
-                Of.e(1, 0), 
-                Of.e(2, 0)
+                Of.elements[0][0], 
+                Of.elements[1][0], 
+                Of.elements[2][0]
             ];
             var filterStep = (m.filter - b.filter);
             if(Math.abs(O[0]) < 0.5 && Math.abs(O[1]) < 0.5 && Math.abs(O[2]) < 0.5) {
@@ -664,6 +670,11 @@ var opensurf;
                 postMessage({
                     "type": "point",
                     "value": p
+                }, undefined);
+            }, function (text) {
+                postMessage({
+                    "type": "log",
+                    "value": text
                 }, undefined);
             });
             SurfDescriptor.DecribeInterestPoints(ipts, false, false, iimg, function (p, t) {

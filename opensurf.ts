@@ -35,10 +35,10 @@ module opensurf{
 		/// Descriptor vector
 		/// </summary>
 		descriptorLength:number;
-		descriptor:Float32Array = null;
+		descriptor:Float64Array = null;
 		SetDescriptorLength(size:number):void{
 			this.descriptorLength = size;
-			this.descriptor = new Float32Array(size);
+			this.descriptor = new Float64Array(size);
 		}
 	}
 
@@ -216,9 +216,9 @@ module opensurf{
 		/// <param name="ip"></param>
 		GetOrientation(ip:IPoint):void{
 			var Responses:number = 109;
-			var resX:Float32Array = new Float32Array(Responses);
-			var resY:Float32Array = new Float32Array(Responses);
-			var Ang:Float32Array  = new Float32Array(Responses);
+			var resX:Float64Array = new Float64Array(Responses);
+			var resY:Float64Array = new Float64Array(Responses);
+			var Ang:Float64Array  = new Float64Array(Responses);
 			var idx:number = 0;
 			var id:number[] = [ 6, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 6 ];
 
@@ -445,12 +445,12 @@ module opensurf{
 
 
  	class ResponseLayer{
-		public responses:Float32Array;
-		public laplacian:Float32Array;
+		public responses:Float64Array;
+		public laplacian:Float64Array;
 
 		constructor(public width:number, public height:number, public step:number, public filter:number){
-			this.responses = new Float32Array(width * height);
-			this.laplacian = new Float32Array(width * height);
+			this.responses = new Float64Array(width * height);
+			this.laplacian = new Float64Array(width * height);
 		}
 
 		public getLaplacian(row:number, column:number, src?:ResponseLayer):number{
@@ -489,9 +489,9 @@ module opensurf{
 		/// <param name="init_sample"></param>
 		/// <param name="img"></param>
 		/// <returns></returns>
-		public static getIpoints(thresh:number, octaves:number,init_sample:number, img:IntegralImage, observer?:(p:IPoint)=>void):IPoint[]{
+		public static getIpoints(thresh:number, octaves:number,init_sample:number, img:IntegralImage, observer?:(p:IPoint)=>void, logger?:(text:string)=>void):IPoint[]{
 			var fh:FastHessian = new FastHessian(thresh, octaves, init_sample, img);
-			return fh.getIpoints(observer);
+			return fh.getIpoints(observer, logger);
 		}
 
 
@@ -529,7 +529,7 @@ module opensurf{
 		/// <summary>
 		/// Find the image features and write into vector of features
 		/// </summary>
-		public getIpoints(observer?:(p:IPoint)=>void):IPoint[]{
+		public getIpoints(observer?:(p:IPoint)=>void, logger?:(text:string)=>void):IPoint[]{
 		// filter index map
 			var filter_map:number[][] = [[0,1,2,3], [1,3,4,5], [3,5,6,7], [5,7,8,9], [7,9,10,11]];
 
@@ -552,6 +552,12 @@ module opensurf{
 					for (var r:number = 0; r < t.height; ++r){
 						for (var c:number = 0; c < t.width; ++c){
 							if (this.isExtremum(r, c, t, m, b)){
+								if(logger){
+									logger(this.ipts.length + ": r=" + r + ", c=" + c);									
+								}
+								if(this.ipts.length === 417){
+									var hoge = 0;
+								}
 								this.interpolateExtremum(r, c, t, m, b, observer);
 							}
 						}
@@ -708,7 +714,11 @@ module opensurf{
 			var Of:Sylvester.Matrix  = Hi.map(e=>-e).multiply(D);
 
 			// get the offsets from the interpolation
-			var O:number[] = [ Of.e(0, 0), Of.e(1, 0), Of.e(2, 0) ];
+			var O:number[] = [ 
+				Of.elements[0][0], 
+				Of.elements[1][0], 
+				Of.elements[2][0]
+			];
 
 			// get the step distance between filters
 			var filterStep:number = (m.filter - b.filter);
@@ -789,6 +799,8 @@ module opensurf{
 	        // Extract the interest points
 	        var ipts:IPoint[] = FastHessian.getIpoints(0.0002, 5, 2, iimg, (p:IPoint)=>{
 	        	postMessage({"type":"point", "value":p}, undefined);  
+	        }, (text:string)=>{
+	        	postMessage({"type":"log", "value":text}, undefined);
 	        });
 
 	        // Describe the interest points

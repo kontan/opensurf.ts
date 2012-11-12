@@ -12,15 +12,18 @@ module OpenSURFDemo{
         var img:HTMLImageElement;
 
         function setImage(url:string):void{
+            $('#startBtn').attr("disabled", "disabled");
+            $('#message').text("Loading the image...");
             img = new Image();
             img.addEventListener('load', ()=>{
                 canvas.width  = img.width;
                 canvas.height = img.height;                
                 g.drawImage(img, 0, 0);
                 $('#startBtn').removeAttr("disabled");
+                $('#image_description').text("size:" + img.width + "x" + img.height);
+                $('#message').text("Ready.");
             });
-            img.src = url; 
-            $('#startBtn').attr("disabled", "disabled");
+            img.src = url;
         }
 
 
@@ -64,80 +67,122 @@ module OpenSURFDemo{
         }
 
         function startWorker(){
-            g.drawImage(img, 0, 0);
-            var iimg = opensurf.IntegralImage.FromImage(img);
-            var worker:Worker = new Worker('opensurf.js');
-            var ipts:opensurf.IPoint[] = [];
+            try{
+                $('#message').text("Processing...");
+                g.drawImage(img, 0, 0);
+                var iimg = opensurf.IntegralImage.FromImage(img);
+                var worker:Worker = new Worker('opensurf.js');
+                var ipts:opensurf.IPoint[] = [];
 
-            var listener = (data)=>{
-                if(data.type === "point"){
-                    paintIPoint(data.value);
-                }else if(data.type === "describe"){
-                    //g.drawImage(img, 0, 0);
+                var start = new Date().getTime();
+                function timespan():string{
+                    var result = ((new Date().getTime() - start) * 0.001).toFixed(2) + "sec.";
+                    start = new Date().getTime();
+                    return result;
+                }
+
+                var totalStart = new Date().getTime();
+
+                var listener = (data)=>{
+                    var createWorker = timespan();
                     listener = (data)=>{
-                        if(data.type === "describe"){
-                            var ipt:opensurf.IPoint = data.value;
-                            paintIPointDescribe(ipt);
-                            ipts.push(ipt);
-                        }else if(data.type === "finish"){
-                            var ipts:opensurf.IPoint[] = data.value;
+                        if(data.type === "point"){
+                            paintIPoint(data.value);
+                        }else if(data.type === "describe"){
+                            //g.drawImage(img, 0, 0);
+                            var getPoints = timespan();
+                            listener = (data)=>{
+                                if(data.type === "describe"){
+                                    var ipt:opensurf.IPoint = data.value;
+                                    paintIPointDescribe(ipt);
+                                    ipts.push(ipt);
+                                }else if(data.type === "finish"){
+                                    //var ipts:opensurf.IPoint[] = data.value;
+                                    var describe = timespan();
+                                    $('#message').text(
+                                        "points:" + ipts.length + 
+                                        " createWorker:" + createWorker +
+                                        " getPoints:"    + getPoints +
+                                        " describe:"     + describe + 
+                                        " total:" + ((new Date().getTime() - totalStart) * 0.001).toFixed(2) + "sec."
+                                    );
+                                }else{
+                                    throw new Error("Unexpected message");
+                                }
+                            };
+                            listener(data);
+
+                        }else{
+                            throw new Error("Unexpected message");
                         }
                     };
                     listener(data);
-                }
-            };
+                };
 
-            worker.addEventListener('message', (e:any)=>{
-                listener(e.data);
-            }, false);
+                worker.addEventListener('message', (e:any)=>{
+                    if(e.data.type === "log"){
+                        console.log(e.data.value);
+                    }else{
+                        listener(e.data);
+                    }
+                }, false);
 
-            worker.postMessage({"type":"image", "value":iimg.serialize()});
+                worker.postMessage({"type":"image", "value":iimg.serialize()});
+            }catch(e){
+                $('#message').text("ERROR: " + e.toString() + " / " + e.message);
+            }
+        }
+
+        function executeSynchronous(){
+            g.drawImage(img, 0, 0);
+
+            var totalStart:number = new Date().getTime();
+
+            var iimg;
+            var createIntegralImage:string = measureTime(()=>{
+                iimg = opensurf.IntegralImage.FromImage(img);
+            });
+
+            var ipts:opensurf.IPoint[];
+            var getPoints:string = measureTime(()=>{
+                ipts = opensurf.FastHessian.getIpoints(0.0002, 5, 2, iimg, (p:opensurf.IPoint)=>{
+                    paintIPoint(p);
+                }, (text:string)=>{
+                    console.log(text);
+                });
+            });
+
+            // Describe the interest points
+            var describe:string = measureTime(()=>{
+                opensurf.SurfDescriptor.DecribeInterestPoints(ipts, false, false, iimg, (p:opensurf.IPoint,t:number)=>{
+                    paintIPointDescribe(p);
+                });
+            }); 
+
+            $('#message').text(
+                "points:" + ipts.length + 
+                " createIntegralImage:" + createIntegralImage + "sec." + 
+                " getPoints:"    + getPoints + "sec." +
+                " describe:"     + describe + "sec." +
+                " total:" + ((new Date().getTime() - totalStart) * 0.001).toFixed(2) + "sec."
+            );
         }
 
         $('#startBtn').click(()=>{
-                
             startWorker();
-            return;
-
-
-            if(img && img.complete){
-                var startTime:Date = new Date();
-
-                var iimg:opensurf.IntegralImage;
-                var ipts;
-                var fromImageTime:string, getIpointsTime:string, decribeTime:string;
-                var totalTime = measureTime(()=>{
-
-                    // Create Integral Image
-                    iimg = opensurf.deserializeIntegralImage(parsed);
-
-                    // Extract the interest points
-                    getIpointsTime = measureTime(()=>{
-                        ipts = opensurf.FastHessian.getIpoints(0.0002, 5, 2, iimg);
-                    });
-
-                    // Describe the interest points
-                    decribeTime = measureTime(()=>{
-                        opensurf.SurfDescriptor.DecribeInterestPoints(ipts, false, false, iimg);
-                    });
-
-                });
-
-                $('#message').text(
-                    "points:" + ipts.length +  
-                    " fromImage:"  + fromImageTime  + "sec." +
-                    " getIpoints:" + getIpointsTime + "sec." +
-                    " decribe:"    + decribeTime    + "sec." +
-                    " total:"      + totalTime      + "sec."
-                );
-
-                // Draw points on the image
-                PaintSURF(img, ipts);
-
-                //startWorker();
-            }
         });    
-
-        setImage("yamada.png");
+        $('#startBtn_sync').click(()=>{
+            executeSynchronous();
+        });
+        $('#load_button').click(()=>{
+            setImage($("#url_text").val());
+        });
+        $('a.sample').click((e:JQueryEventObject)=>{
+            var url = $(e.target).attr("href");
+            $("#url_text").val(url);
+            setImage(url);
+            e.preventDefault();
+        });
+        setImage($("#url_text").val());
     });
 } 

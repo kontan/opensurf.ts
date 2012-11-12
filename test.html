@@ -6,19 +6,78 @@
 			canvas{
 				border: solid 1px black;
 			}
+			#url_caption{
+				position: absolute;
+				width: 10em;
+			}
+			#url_text{
+				position: absolute;
+				left: 10em;				
+				right: 4em;
+				display: block
+			}
+			#load_button{
+				position: absolute;
+				right: 0px;
+				display: block;
+			}
 		</style>
 		<script src="jquery-1.8.2.js"></script>
 		<script src="../sylvester/src/sylvester.js"></script>
 		<script src="../sylvester/src/matrix.js"></script>
 		<script src="opensurf.js"></script>
 		<script src="demo.js"></script>
+
+		<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-28131600-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
 	</head>
 	<body>
-		<canvas id="canvas" width="640" height="480"></canvas>
-		<div>
-			<input type="button" value="Start" id="startBtn"></input>
-			<span id="message"></span>
+		&lt; <a href="../">back to top</a>
+		<h2>Speeded Up Robust Feature Demo</h2>
+		<h3>Abstract</h3>
+		<p>
+			This is a <a href="http://www.typescriptlang.org/">TypeScript</a>(JavaScript) port of <a href="http://www.chrisevansdev.com/computer-vision-opensurf.html">OpenSURFcs</a>.
+			You can execute <a href="http://en.wikipedia.org/wiki/SURF">SURF</a> local feature detection on your Web browser.
+			This demonstration is available on a Web browsers supports some advanced feature, like <a href="http://www.w3.org/TR/2dcontext/">Canvas</a>, <a href="http://www.w3.org/TR/workers/">Web Workers</a> and <a href="http://www.khronos.org/registry/typedarray/specs/latest/">Typed Array</a>.
+			<a href="http://www.google.com/chrome/">Google Chrome</a> is one of suitable browser for it.
+		</p>
+		<h3>Usage</h3>
+		<p>Input a url of a image to the following text box:</p>
+		<div style="height:9em; position:relative;">
+			<div style="height:2em;">
+				<div id="url_caption">Source Image URL:</div>
+				<input id="url_text" type="text" value="yamada.png"/>
+				<input id="load_button" type="button" value="LOAD" />
+			</div>
+			<div>(Caution: Cross domain image loading is not yet implemented. You can choose a image from only the following sample images.)</div>
+			<div>
+				Sample Images: 
+				<a class="sample" href="yamada.png">yamada.png</a>
+				<a class="sample" href="akiko.png">akiko.png</a>
+				<a class="sample" href="cat.png">cat.png</a>
+				<a class="sample" href="flower.png">flower.png</a>
+			</div>
+			<div>
+				<span id="image_description"></span>
+			</div>
+			<div>
+				When image loading finished, press the next button to execute detection.
+				<input type="button" value="Start SURF Detection (Async)" id="startBtn"></input>
+				<input type="button" value="Start SURF Detection (Sync)" id="startBtn_sync"></input>
+				<div id="message"></div>
+			</div>
 		</div>
-		 
+		<canvas id="canvas" width="640" height="480"></canvas>
 	</body>
 </html>
