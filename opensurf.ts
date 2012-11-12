@@ -1,4 +1,4 @@
-/// <reference path="../sylvester/src/matrix.d.ts" />
+/// <reference path="sylvester/src/matrix.d.ts" />
 module opensurf{
 	export class IPoint{
 		constructor(){
